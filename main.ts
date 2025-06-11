@@ -6,6 +6,7 @@ import {
   ListToolsRequestSchema,
   ToolSchema,
 } from "@modelcontextprotocol/sdk/types.js";
+import { Message, toModel } from "./Models.js";
 
 interface LLMtought {
   tought: string;
@@ -27,12 +28,41 @@ const server = new Server({
     },
       });
 
+  const dialogueHistory : Message[] = []
+
+
+  const dialogue = async (dialoguePhase : LLMtought)=>{
+    let { tought, chosenCriticId, critique, revision, loopContinue, toughtNumber } = dialoguePhase;
+    dialogueHistory.push({
+      role: "user",
+      content: dialoguePhase.tought
+    });
+    try {
+      critique = await toModel(chosenCriticId ,dialogueHistory);
+    } catch (error) {
+      console.error("Error during critique generation:", error);
+    }
+    return {
+      tought: tought,
+      chosenCriticId: chosenCriticId,
+      critique: critique,
+      revision: revision,
+      loopContinue: loopContinue,
+      toughtNumber: toughtNumber + 1
+    }
+  }
+
+    
+
+
+
+
+
 server.setRequestHandler(ListToolsRequestSchema , async () => ({
   tools: [
      {
         name: "MultiMind",
-        description:
-         `
+        description:`
   Tool: Constructive LLM Dialogue for Complex Reasoning and Iterative Refinement This tool enables structured,
   reflective problem-solving by simulating constructive conversations between AI agents. 
   It’s based on a loop of hypothesis generation, criticism, and revision, orchestrated by a primary agent (YOU). 
@@ -45,32 +75,36 @@ server.setRequestHandler(ListToolsRequestSchema , async () => ({
   - In situations where your initial answer might benefit from constructive critique
   - For debugging thought processes or assumptions in long-form reasoning
   - When you want explainability through dialectical reasoning
+  - When you want to ensure robustness and defensibility in your conclusions
+  - When you want to avoid premature convergence on a suboptimal solution
+  - when the user explicitly asks for a multi-agent dialogue or debate to refine an idea
+  - When you want to simulate a peer review process for your thoughts or plans
+  - When you want to ensure that your reasoning is sound and well-supported by evidence
+  - When you want to explore alternative viewpoints or counterarguments
+  - When you want to improve the quality of your reasoning through iterative feedback
 
   Key Features:
   - LLM1(you) initiates the process with a proposed solution, analysis,tought , or idea
-  - LLM1(you) selects a critic From one of these (LLM2, LLM3, etc.) based on criteria like domain knowledge or reasoning style
-  - The critic LLM reviews and challenges the initial thought — pointing out flaws, gaps, or alternatives
+  - LLM1(you) selects a critic From one of these (deepseek-r1-distill-llama-70b, gpt-4o,llama-3.3-70b-versatile) based on criteria like domain knowledge or reasoning style
+  - The critic LLM reviews and challenges your thought — pointing out flaws, gaps, or alternatives
   - LLM1 revises its original response or defends it with justification
   - The process loops as needed: LLM1 may propose a new thought or escalate to a new critic
   - Ends when LLM1 is confident the solution is refined and defensible
 
   Parameters Explained:
-  - initial_input: The user’s original question or challenge
-  - thought: Current proposal, hypothesis, plan, or explanation by LLM1
-  - chosen_critic: The LLM selected to critique the current thought
-  - critique: A structured response highlighting flaws, assumptions, or improvements
+  - thought:your reply to the user if there is no user dialogue with LLMS 
+  - chosenCriticId: The LLM selected to critique the current thought, should be From one of these (deepseek-r1-distill-llama-70b, gpt-4o,llama-3.3-70b-versatile)
+  - critique: A structured response from the critic LLM highlighting flaws, assumptions , gaps, or missteps  
   - revision: LLM1’s response to the critique (can include acceptance, rejection, or compromise)
-  - loop_continue: Boolean flag — does LLM1 want to continue the dialogue or finalize the solution?
-  - round_number: Current step in the debate (increments with each cycle)
-  - solution_ready: Boolean indicating whether LLM1 believes the final answer is reached
-  - final_answer: If solution_ready is true, this is the clean output to return
+  - loopContinue: Boolean flag — does LLM1(you) want to continue the dialogue or finalize the solution?
+  - toughtNumber: Current step in the debate (starts by 1 and increments with each cycle)
 
   Usage Protocol:
-  1. Start the Dialogue: LLM1 receives initial_input and generates a thoughtful response (hypothesis, plan, etc.)
+  1. Start the Dialogue: LLM1 receives initial input and generates a thoughtful response (hypothesis, plan, etc.)
   2. Choose a Critic: LLM1 selects a secondary agent best suited to evaluate the idea (e.g., by expertise or skepticism)
   3. Receive Critique: The selected critic LLM reviews the thought and issues a structured critique — focusing on logic, assumptions, facts, or alternatives
   4. Revise & Reflect: LLM1 responds by refining its thought, acknowledging valid criticisms, and adjusting its output
-  5. Loop or Finalize: If the response still feels incomplete, uncertain, or flawed, LLM1 chooses to loop again — optionally selecting a new critic. If confident in the output, LLM1 sets solution_ready = true and delivers the final answer
+  5. Loop or Finalize: If the response still feels incomplete, uncertain, or flawed, LLM1 chooses to loop again — optionally selecting a new critic. If confident in the output, LLM1 sets LoopContinue = false and delivers the final answer
   6. End Protocol: Once satisfied, the tool outputs the most refined and justified solution generated during the process
 
   You should:
@@ -81,19 +115,43 @@ server.setRequestHandler(ListToolsRequestSchema , async () => ({
   - Mark the end only when confident that the solution is robust
   - Provide one final, clear, polished answer for the user
 
-  Example Use Cases:
-  - Designing an architecture for a scalable mobile app
-  - Evaluating the ethical dimensions of deploying surveillance tech
-  - Debugging an AI algorithm with multiple failure points
-  - Planning a community  -based entrepreneurship initiative
-  - Creating a startup pitch with both technical and business feasibility
-`,
+
+
+  `,
         inputSchema: {
           type: "object",
           properties: {
-            a: { type: "number", description: "The first number" },
-            b: { type: "number", description: "The second number" },
+            tought: {
+              type: "string",
+              description: "your  reply to the user as usual if there is no user dialogue or debate with LLMS",
+            },
+            chosenCriticId: {
+              type: "string",
+              description: "one of these deepseek-r1-distill-llama-70b , gpt-4o or llama-3.3-70b-versatile",
+            },
+            critique: {
+              type: "string",
+              description: "A structured response from the critic LLM highlighting flaws, assumptions, gaps, or missteps , dont include anything here , this will be filled by the critic LLM auytomatically in next step",
+            },
+            revision: {
+              type: "string",
+              description: "LLM1’s response to the critique (can include acceptance, rejection, or compromise)",
+            },
+            loopContinue: {
+              type: "boolean",
+              description: "does LLM1(you) want to continue the dialogue or finalize the solution?",
+            },
+            toughtNumber: {
+              type: "number",
+              description: "Current step in the debate (starts by 1 and increments with each cycle)",
+            },
           },
+          required: [
+            "tought", 
+            "chosenCriticId",
+            "loopContinue",
+            "toughtNumber"
+          ],
         },
       }
   ]
@@ -103,11 +161,9 @@ server.setRequestHandler(ListToolsRequestSchema , async () => ({
 server.setRequestHandler(
   CallToolRequestSchema,
   async (request) => {
-    if (request.params.name === "add-two-numbers") {
-      const { a , b } = request.params.arguments as {a : number, b: number};
-      return {
-        content: [{ type: "text", text: String(a + b) }],
-      };
+    if (request.params.name === "MultiMind") {
+      const result = await dialogue(request.params.arguments as unknown as LLMtought);
+      return { content : [{type : "text" , text : JSON.stringify(result)}]};
     }
     throw new Error(`Unknown tool: ${request.params.name}`);
   }
