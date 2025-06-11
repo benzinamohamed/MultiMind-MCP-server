@@ -1,0 +1,21 @@
+{
+  "name": "multimind-mcp",
+  "version": "1.0.0",
+  "description": "A Tool get you the best results out of an LLM!",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "ts-node main.ts",
+    "build": "tsc"
+  },
+  "type": "module",
+  "author": "BENZINA MOHAMED",
+  "license": "ISC",
+  "devDependencies": {
+    "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1",
+    "groq-sdk": "^0.23.0",
+    "openai": "^5.3.0"
+  }
+}
