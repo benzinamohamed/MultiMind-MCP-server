@@ -10,6 +10,7 @@
   "type": "module",
   "author": "BENZINA MOHAMED",
   "license": "ISC",
+  "files": ["dist"],
   "devDependencies": {
     "typescript": "^5.8.3"
   },
