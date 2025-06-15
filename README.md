@@ -51,7 +51,7 @@ To use MultiMind inside **Claude**, edit your Claude tools configuration and add
   }
 }
 ```
-### 🟦 VSCODE (Anthropic Desktop AI)
+### 🟦 VSCODE 
 
 To use MultiMind inside **Vscode**, edit your settings.json file and the following:
 
